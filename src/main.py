@@ -17,83 +17,74 @@ def print_board():
     f"1  {board[6]} | {board[7]} | {board[8]}\n" \
     "   a   b   c\n")
 
-def check_winner(table):
-    x_won = False
-    o_won = False
+def check_winner(board):
     for i in range(0, 9, 3):
-        if table[i] != ' ' and table[i] == table[i+1] == table[i+2]:
-            if table[i] == 'X': x_won = True
-            else: o_won = True
+        if board[i] != ' ' and board[i] == board[i+1] == board[i+2]:
+            if board[i] == 'X': return 'X'
+            else: return 'O'
     for i in range(3):
-        if table[i] != ' ' and table[i] == table[i+3] == table[i+6]:
-            if table[i] == 'X': x_won = True
-            else: o_won = True
-    if table[0] != ' ' and table[0] == table[4] == table[8]:
-        if table[0] == 'X': x_won = True
-        else: o_won = True    
-    if table[2] != ' ' and table[2] == table[4] == table[6]:
-        if table[2] == 'X': x_won = True
-        else: o_won = True
-    if x_won:   return 'X'
-    elif o_won: return 'O'
-    else:
-        if avalible_moves(table): return None
-        else: return 'draw'
+        if board[i] != ' ' and board[i] == board[i+3] == board[i+6]:
+            if board[i] == 'X': return 'X'
+            else: return 'O'
+    if board[0] != ' ' and board[0] == board[4] == board[8]:
+        if board[0] == 'X': return 'X'
+        else: return 'O'  
+    if board[2] != ' ' and board[2] == board[4] == board[6]:
+        if board[2] == 'X': return 'X'
+        else: return 'O'
+    return None
     
-def avalible_moves(table):
+def available_moves(board):
     moves = []
     for i in range(SIZE):
-        if table[i] == ' ': moves.append(i)
+        if board[i] == ' ': moves.append(i)
     return moves
 
-def minmax(table, is_max):
-    result = check_winner(table)
-    if result:
-            if result:
-                if result == 'X': return 1
-                elif result == 'O': return -1
-                else : return 0
+def minmax(board, is_max):
+    result = check_winner(board)
+    if result == 'X': return 1
+    elif result == 'O': return -1
+    available = available_moves(board)
+    if not available: return 0
+    if is_max:
+        best_score = -2
+        for i in available:
+            board[i] = 'X'
+            best_score = max(minmax(board, False), best_score)
+            board[i] = ' '     
     else:
-        avalible = avalible_moves(table)
-        if is_max:
-            best_score = -2
-            for i in avalible:
-                table[i] = 'X'
-                best_score = max(minmax(table, False), best_score)
-                table[i] = ' '     
-        else:
-            best_score = 2
-            for i in avalible:
-                table[i] = 'O'
-                best_score = min(minmax(table, True), best_score)
-                table[i] = ' '
-        return best_score
+        best_score = 2
+        for i in available:
+            board[i] = 'O'
+            best_score = min(minmax(board, True), best_score)
+            board[i] = ' '
+    return best_score
     
-def bot_move(table, turn):
-    avalible = avalible_moves(table)
+def bot_move(board, turn):
+    available = available_moves(board)
     if turn == 'X':
         best_score = -2
         best_move = -1
-        for i in avalible:
-            table[i] = 'X'
-            test = minmax(table, False)
+        for i in available:
+            board[i] = 'X'
+            test = minmax(board, False)
             if test > best_score:
                 best_score = test
                 best_move = i
-            table[i] = ' '
+            board[i] = ' '
     else:
         best_score = 2
         best_move = -1
-        for i in avalible:
-            table[i] = 'O'
-            test = minmax(table, True)
+        for i in available:
+            board[i] = 'O'
+            test = minmax(board, True)
             if test < best_score:
                 best_score = test
                 best_move = i
-            table[i] = ' '
+            board[i] = ' '
     return best_move
 
-def read_move(x_turn):
+def read_move(board, x_turn):
     invalid = False
     while True:
         print_board()
@@ -121,13 +112,22 @@ def read_move(x_turn):
         
 def game_loop():
     winner = None
+    player_moves_first = start_game()
+    if player_moves_first:
+        bot_symbol = 'O'
+    else:
+        bot_symbol = 'X'
     for i in range(SIZE):
-        if i % 2 == 0: x_turn = True
-        else: x_turn = False
-        if x_turn:
-            move = bot_move(board, 'X')
-            board[move] = 'X'
-        else: read_move(x_turn)
+        if player_moves_first:
+            if i % 2 == 0: player_turn = True
+            else: player_turn = False
+        else: 
+            if i % 2 == 0: player_turn = False
+            else: player_turn = True
+        if not player_turn:
+            move = bot_move(board, bot_symbol)
+            board[move] = bot_symbol
+        else: read_move(board, player_moves_first)
         if i > 3:
             validator = check_winner(board)
             match validator:
@@ -137,12 +137,21 @@ def game_loop():
                     winner = 'X'
                 case 'O':
                     winner = 'O'
-                case _:
-                    winner = 'draw'
             break
+    winner = check_winner(board)
     print_board()
     if winner == 'X': print("\'X\' won, game over.")
     elif winner == 'O': print("\'O\' won, game over.")
     else: print("Draw, game over.")
+
+def start_game():
+    invalid = False
+    while True:
+        clear_cli()
+        if invalid: print("Invalid choice, try again.")
+        player = input("Choose your symbol, \'X\' or \'O\' (\'X\' plays first): ")
+        if player.upper() == 'X': return True
+        elif player.upper() == 'O': return False
+        else: invalid = True
 
 game_loop()
